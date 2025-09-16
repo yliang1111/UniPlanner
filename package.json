@@ -1,0 +1,39 @@
+{
+  "name": "uniplanner",
+  "version": "1.0.0",
+  "description": "Intelligent Degree Planning and Audit System",
+  "main": "run.py",
+  "scripts": {
+    "setup": "./setup.sh",
+    "start": "./start_servers.sh",
+    "stop": "./stop_servers.sh",
+    "dev": "python run.py",
+    "dev:setup": "python run.py --setup",
+    "backend": "python run.py --backend-only",
+    "frontend": "python run.py --frontend-only",
+    "clean": "rm -rf backend/venv backend/db.sqlite3 frontend/node_modules backend/.backend_pid frontend/.frontend_pid",
+    "reset": "npm run clean && npm run setup"
+  },
+  "keywords": [
+    "education",
+    "degree-planning",
+    "course-scheduling",
+    "academic-audit",
+    "django",
+    "react",
+    "university"
+  ],
+  "author": "UniPlanner Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/uniplanner.git"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "python": ">=3.9.0"
+  },
+  "devDependencies": {},
+  "dependencies": {}
+}
+
