@@ -1,0 +1,4 @@
+# UniPlanner - Degree Planning System
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Disallow:
