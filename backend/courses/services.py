@@ -245,22 +245,24 @@ class PrerequisiteValidator:
     
     def _calculate_course_priority(self, course: Course) -> float:
         """Calculate priority score for a course"""
-        score = 0.0
+        from decimal import Decimal
+        
+        score = Decimal('0.0')
         
         # Base score from credits
-        score += course.credits * 0.1
+        score += course.credits * Decimal('0.1')
         
         # Bonus for courses that unlock many other courses
         unlocks_count = Prerequisite.objects.filter(prerequisite_course=course).count()
-        score += unlocks_count * 0.5
+        score += Decimal(str(unlocks_count)) * Decimal('0.5')
         
         # Bonus for courses in student's degree program
         if hasattr(self.student, 'degrees'):
             for degree in self.student.degrees.all():
                 if course.degree_requirements.filter(requirement__degree_program=degree.degree_program).exists():
-                    score += 1.0
+                    score += Decimal('1.0')
         
-        return score
+        return float(score)
     
     def _get_recommendation_reason(self, course: Course) -> str:
         """Get human-readable reason for recommending a course"""

@@ -89,7 +89,7 @@ class ProgramSerializer(serializers.ModelSerializer):
     program_type = ProgramTypeSerializer(read_only=True)
     program_type_id = serializers.IntegerField(write_only=True)
     department = DepartmentSerializer(read_only=True)
-    department_id = serializers.IntegerField(write_only=True)
+    department_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     requirements = serializers.SerializerMethodField()
     constraints = serializers.SerializerMethodField()
 

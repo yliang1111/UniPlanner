@@ -30,9 +30,7 @@ def login_view(request):
         
         if user is not None:
             if user.is_active:
-                login(request, user)
-                
-                # Get or create token for the user
+                # Get or create token for the user (no session login needed)
                 from rest_framework.authtoken.models import Token
                 token, created = Token.objects.get_or_create(user=user)
                 
@@ -89,8 +87,6 @@ def login_view(request):
 @api_view(['POST'])
 def logout_view(request):
     """
-    Custom logout view
+    Custom logout view - token-based (no session logout needed)
     """
-    from django.contrib.auth import logout
-    logout(request)
     return Response({'success': True, 'message': 'Logout successful'})

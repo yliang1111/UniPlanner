@@ -18,68 +18,55 @@ def signup_view(request):
     """Handle user registration"""
     try:
         with transaction.atomic():
-            # Extract data from request
             username = request.data.get('username')
-            email = request.data.get('email')
             password = request.data.get('password')
-            first_name = request.data.get('first_name', '')
-            last_name = request.data.get('last_name', '')
             role = request.data.get('role', 'student')
             
-            # Validate required fields
-            if not all([username, email, password]):
+            if not all([username, password]):
                 return Response({
                     'success': False,
-                    'error': 'Username, email, and password are required'
+                    'error': 'Username and password are required'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Check if user already exists
+            reserved_usernames = ['admin', 'guest']
+            if username.lower() in reserved_usernames:
+                return Response({
+                    'success': False,
+                    'error': 'This username is reserved and cannot be used'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
             if User.objects.filter(username=username).exists():
                 return Response({
                     'success': False,
                     'error': 'Username already exists'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            if User.objects.filter(email=email).exists():
-                return Response({
-                    'success': False,
-                    'error': 'Email already exists'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Create user
             user = User.objects.create_user(
                 username=username,
-                email=email,
                 password=password,
-                first_name=first_name,
-                last_name=last_name
+                first_name='',
+                last_name=''
             )
             
-            # Create user profile
             profile = UserProfile.objects.create(
                 user=user,
                 role=role,
-                phone=request.data.get('phone', ''),
-                address=request.data.get('address', ''),
-                date_of_birth=request.data.get('date_of_birth')
+                phone='',
+                address='',
+                date_of_birth=None
             )
             
-            # If student, create student profile
             if role == 'student':
-                student_id = request.data.get('student_id')
-                if not student_id:
-                    # Generate student ID if not provided
-                    student_id = generate_student_id()
+                student_id = generate_student_id()
                 
                 student_profile = StudentProfile.objects.create(
                     user=user,
                     student_id=student_id,
-                    graduation_year=request.data.get('graduation_year'),
-                    gpa=request.data.get('gpa'),
+                    graduation_year=None,
+                    gpa=None,
                     enrollment_status='active'
                 )
             
-            # Serialize and return user data
             user_serializer = UserSerializer(user)
             profile_serializer = UserProfileSerializer(profile)
             
@@ -124,16 +111,14 @@ def get_user_profile(request):
                 'error': 'User not authenticated'
             }, status=status.HTTP_401_UNAUTHORIZED)
         
-        # Get user profile
         try:
             profile = user.profile
         except UserProfile.DoesNotExist:
             return Response({
                 'success': False,
                 'error': 'User profile not found'
-            }, status=status.HTTP_404_NOT_FOUND)
+                }, status=status.HTTP_404_NOT_FOUND)
         
-        # Get student profile if user is a student
         student_profile = None
         if profile.is_student:
             try:
@@ -141,7 +126,6 @@ def get_user_profile(request):
             except StudentProfile.DoesNotExist:
                 pass
         
-        # Serialize data
         user_serializer = UserSerializer(user)
         profile_serializer = UserProfileSerializer(profile)
         
@@ -176,8 +160,20 @@ def update_user_profile(request):
                 'error': 'User not authenticated'
             }, status=status.HTTP_401_UNAUTHORIZED)
         
+        if user.username in ['admin', 'guest']:
+            if 'username' in request.data and request.data['username'] != user.username:
+                return Response({
+                    'success': False,
+                    'error': 'Username cannot be changed for admin/guest accounts'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if 'password' in request.data and request.data['password']:
+                return Response({
+                    'success': False,
+                    'error': 'Password cannot be changed for admin/guest accounts'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
         with transaction.atomic():
-            # Update user fields
             if 'first_name' in request.data:
                 user.first_name = request.data['first_name']
             if 'last_name' in request.data:
@@ -186,7 +182,6 @@ def update_user_profile(request):
                 user.email = request.data['email']
             user.save()
             
-            # Update user profile
             try:
                 profile = user.profile
             except UserProfile.DoesNotExist:
@@ -217,7 +212,6 @@ def update_user_profile(request):
                 except StudentProfile.DoesNotExist:
                     pass
             
-            # Serialize and return updated data
             user_serializer = UserSerializer(user)
             profile_serializer = UserProfileSerializer(profile)
             

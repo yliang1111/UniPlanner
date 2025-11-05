@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Schedule, ScheduleItem, DegreeAudit
+from .models import Schedule, ScheduleItem, DegreeAudit, UserCourseSelection
 from .services import ScheduleConflictDetector
 from courses.serializers import CourseOfferingSerializer
 from users.serializers import StudentProfileSerializer
@@ -32,7 +32,6 @@ class ScheduleItemSerializer(serializers.ModelSerializer):
         schedule = data['schedule']
         offering = data['offering']
         
-        # Check for conflicts
         detector = ScheduleConflictDetector(schedule)
         can_add, conflicts = detector.can_add_course(offering)
         
@@ -59,9 +58,10 @@ class ScheduleWithItemsSerializer(ScheduleSerializer):
 
 class DegreeAuditSerializer(serializers.ModelSerializer):
     student = StudentProfileSerializer(read_only=True)
-    degree_program = serializers.StringRelatedField(read_only=True)
+    program = serializers.StringRelatedField(read_only=True)
     progress = serializers.SerializerMethodField()
     requirement_status = serializers.SerializerMethodField()
+    cross_program_satisfaction = serializers.SerializerMethodField()
     
     def get_progress(self, obj):
         """Get degree completion progress"""
@@ -71,12 +71,37 @@ class DegreeAuditSerializer(serializers.ModelSerializer):
         """Get status of each degree requirement"""
         return obj.get_requirement_status()
     
+    def get_cross_program_satisfaction(self, obj):
+        """Get courses that satisfy multiple programs"""
+        return obj.get_cross_program_satisfaction()
+    
     class Meta:
         model = DegreeAudit
         fields = [
-            'id', 'student', 'degree_program', 'last_updated',
-            'progress', 'requirement_status'
+            'id', 'student', 'program', 'last_updated',
+            'progress', 'requirement_status', 'cross_program_satisfaction'
         ]
+
+
+class UserCourseSelectionSerializer(serializers.ModelSerializer):
+    course_details = serializers.SerializerMethodField()
+    student = serializers.PrimaryKeyRelatedField(read_only=True)
+    
+    class Meta:
+        model = UserCourseSelection
+        fields = [
+            'id', 'student', 'degree_audit', 'course', 'course_details', 'status', 'grade', 
+            'semester_taken', 'timetable_box_id', 'notes', 'added_at', 'updated_at'
+        ]
+    
+    def get_course_details(self, obj):
+        return {
+            'id': obj.course.id,
+            'full_code': obj.course.full_code,
+            'title': obj.course.title,
+            'credits': obj.course.credits,
+            'department': obj.course.department.code
+        }
 
 
 class ScheduleOptimizationSerializer(serializers.Serializer):

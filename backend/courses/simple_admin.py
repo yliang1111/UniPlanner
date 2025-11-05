@@ -10,12 +10,43 @@ from .serializers import CourseSerializer, DepartmentSerializer, DegreeProgramSe
 @permission_classes([AllowAny])
 def simple_admin_courses(request):
     """Simple admin courses endpoint for testing"""
-    courses = Course.objects.all().order_by('department__code', 'course_number')
+    # Get pagination parameters
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 50))  # Default 50 courses per page
+    department_filter = request.GET.get('department', '')
+    
+    # Build optimized query
+    courses_query = Course.objects.select_related('department').prefetch_related(
+        'prerequisites__prerequisite_course__department',
+        'prerequisite_groups',
+        'corequisites__department',
+        'antirequisites__department',
+        'restricted_to_majors'
+    ).order_by('department__code', 'course_number')
+    
+    # Apply department filter if provided
+    if department_filter:
+        courses_query = courses_query.filter(department__code=department_filter)
+    
+    # Get total count
+    total_count = courses_query.count()
+    
+    # Apply pagination
+    start = (page - 1) * page_size
+    end = start + page_size
+    courses = courses_query[start:end]
+    
     serializer = CourseSerializer(courses, many=True)
     
     return Response({
         'success': True,
         'courses': serializer.data,
+        'pagination': {
+            'page': page,
+            'page_size': page_size,
+            'total_count': total_count,
+            'total_pages': (total_count + page_size - 1) // page_size
+        },
         'message': 'This is a test endpoint - no authentication required'
     }, status=status.HTTP_200_OK)
 

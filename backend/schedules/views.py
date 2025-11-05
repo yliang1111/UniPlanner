@@ -3,10 +3,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
-from .models import Schedule, ScheduleItem, DegreeAudit
+from .models import Schedule, ScheduleItem, DegreeAudit, UserCourseSelection
 from .serializers import (
     ScheduleSerializer, ScheduleItemSerializer, ScheduleWithItemsSerializer,
-    DegreeAuditSerializer, ScheduleOptimizationSerializer
+    DegreeAuditSerializer, ScheduleOptimizationSerializer, UserCourseSelectionSerializer
 )
 from .services import ScheduleConflictDetector
 
@@ -158,7 +158,7 @@ class ScheduleItemViewSet(viewsets.ModelViewSet):
         return ScheduleItem.objects.none()
 
 
-class DegreeAuditViewSet(viewsets.ReadOnlyModelViewSet):
+class DegreeAuditViewSet(viewsets.ModelViewSet):
     """ViewSet for degree audits"""
     queryset = DegreeAudit.objects.all()
     serializer_class = DegreeAuditSerializer
@@ -176,3 +176,85 @@ class DegreeAuditViewSet(viewsets.ReadOnlyModelViewSet):
         # The audit is automatically updated when accessed due to the model methods
         serializer = self.get_serializer(audit)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['post'])
+    def enroll(self, request):
+        """Enroll student in a degree program"""
+        if not hasattr(request.user, 'student_profile'):
+            return Response(
+                {'error': 'User is not a student'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        degree_program_id = request.data.get('degree_program_id')
+        if not degree_program_id:
+            return Response(
+                {'error': 'degree_program_id is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from courses.models import Program
+            program = Program.objects.get(id=degree_program_id, is_active=True)
+        except Program.DoesNotExist:
+            return Response(
+                {'error': 'Program not found'}, 
+                status=status.HTTP_404_NOT_F
+            )
+        
+        # Check if student is already enrolled in this program
+        if DegreeAudit.objects.filter(
+            student=request.user.student_profile,
+            program=program
+        ).exists():
+            return Response(
+                {'error': 'Already enrolled in this program'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create degree audit
+        degree_audit = DegreeAudit.objects.create(
+            student=request.user.student_profile,
+            program=program
+        )
+        
+        serializer = self.get_serializer(degree_audit)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['delete'])
+    def unenroll(self, request, pk=None):
+        """Unenroll student from a degree program"""
+        audit = self.get_object()
+        audit.delete()
+        return Response({'message': 'Successfully unenrolled from degree program'})
+
+
+class UserCourseSelectionViewSet(viewsets.ModelViewSet):
+    """ViewSet for user course selections"""
+    queryset = UserCourseSelection.objects.all()
+    serializer_class = UserCourseSelectionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if hasattr(self.request.user, 'student_profile'):
+            return UserCourseSelection.objects.filter(student=self.request.user.student_profile)
+        return UserCourseSelection.objects.none()
+
+    def perform_create(self, serializer):
+        if hasattr(self.request.user, 'student_profile'):
+            serializer.save(student=self.request.user.student_profile)
+
+    @action(detail=False, methods=['get'])
+    def by_degree_audit(self, request):
+        """Get course selections for a specific degree audit"""
+        degree_audit_id = request.query_params.get('degree_audit_id')
+        if not degree_audit_id:
+            return Response({'error': 'degree_audit_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            degree_audit = DegreeAudit.objects.get(id=degree_audit_id, student=request.user.student_profile)
+            selections = UserCourseSelection.objects.filter(degree_audit=degree_audit)
+            serializer = self.get_serializer(selections, many=True)
+            return Response(serializer.data)
+        except DegreeAudit.DoesNotExist:
+            return Response({'error': 'Degree audit not found'}, status=status.HTTP_404_NOT_F)

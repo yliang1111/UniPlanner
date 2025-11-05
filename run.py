@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 UniPlanner Runner Script
-A Python-based server management script for UniPlanner
 """
 
 import os
@@ -11,15 +10,6 @@ import signal
 import time
 import threading
 from pathlib import Path
-
-class Colors:
-    RED = '\033[0;31m'
-    GREEN = '\033[0;32m'
-    YELLOW = '\033[1;33m'
-    BLUE = '\033[0;34m'
-    PURPLE = '\033[0;35m'
-    CYAN = '\033[0;36m'
-    NC = '\033[0m'  # No Color
 
 class UniPlannerRunner:
     def __init__(self):
@@ -31,41 +21,24 @@ class UniPlannerRunner:
         self.running = False
 
     def print_banner(self):
-        banner = f"""
-{Colors.CYAN}
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║                    🎓 UniPlanner Runner 🎓                   ║
-║                                                              ║
-║              Intelligent Degree Planning System              ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-{Colors.NC}
-        """
-        print(banner)
+        print("UniPlanner - Starting servers...")
 
     def check_prerequisites(self):
         """Check if required tools are installed"""
-        print(f"{Colors.BLUE}🔍 Checking prerequisites...{Colors.NC}")
+        print("Checking prerequisites...")
         
-        required_commands = {
-            'python3': 'Python 3.9+',
-            'node': 'Node.js 16+',
-            'npm': 'npm package manager'
-        }
-        
+        required_commands = ['python3', 'node', 'npm']
         missing = []
-        for cmd, desc in required_commands.items():
+        
+        for cmd in required_commands:
             if not self.command_exists(cmd):
-                missing.append(f"{cmd} ({desc})")
+                missing.append(cmd)
         
         if missing:
-            print(f"{Colors.RED}❌ Missing required tools:{Colors.NC}")
-            for tool in missing:
-                print(f"   • {tool}")
+            print(f"Missing required tools: {', '.join(missing)}")
             return False
         
-        print(f"{Colors.GREEN}✅ All prerequisites found{Colors.NC}")
+        print("All prerequisites found")
         return True
 
     def command_exists(self, command):
@@ -79,22 +52,20 @@ class UniPlannerRunner:
 
     def check_ports(self):
         """Check if required ports are available"""
-        print(f"{Colors.BLUE}🔌 Checking port availability...{Colors.NC}")
+        print("Checking port availability...")
         
-        ports = {8000: 'Django Backend', 3000: 'React Frontend'}
+        ports = [8000, 3000]
         occupied = []
         
-        for port, service in ports.items():
+        for port in ports:
             if self.port_in_use(port):
-                occupied.append(f"Port {port} ({service})")
+                occupied.append(port)
         
         if occupied:
-            print(f"{Colors.YELLOW}⚠️  Occupied ports:{Colors.NC}")
-            for port in occupied:
-                print(f"   • {port}")
+            print(f"Occupied ports: {', '.join(map(str, occupied))}")
             return False
         
-        print(f"{Colors.GREEN}✅ All ports available{Colors.NC}")
+        print("All ports available")
         return True
 
     def port_in_use(self, port):
@@ -110,66 +81,52 @@ class UniPlannerRunner:
 
     def setup_backend(self):
         """Setup Django backend"""
-        print(f"{Colors.BLUE}🐍 Setting up Django Backend...{Colors.NC}")
+        print("Setting up Django Backend...")
         
         os.chdir(self.backend_dir)
         
         # Check virtual environment
         venv_path = self.backend_dir / "venv"
         if not venv_path.exists():
-            print(f"{Colors.YELLOW}Creating virtual environment...{Colors.NC}")
+            print("Creating virtual environment...")
             subprocess.run([sys.executable, '-m', 'venv', 'venv'], check=True)
         
-        # Activate virtual environment and install dependencies
-        if os.name == 'nt':  # Windows
-            activate_script = venv_path / "Scripts" / "activate.bat"
-            pip_path = venv_path / "Scripts" / "pip"
-        else:  # Unix/Linux/macOS
-            activate_script = venv_path / "bin" / "activate"
-            pip_path = venv_path / "bin" / "pip"
-        
         # Install dependencies
-        print(f"{Colors.YELLOW}Installing Python dependencies...{Colors.NC}")
+        if os.name == 'nt':  # Windows
+            pip_path = venv_path / "Scripts" / "pip"
+            python_path = venv_path / "Scripts" / "python"
+        else:  # Unix/Linux/macOS
+            pip_path = venv_path / "bin" / "pip"
+            python_path = venv_path / "bin" / "python"
+        
+        print("Installing Python dependencies...")
         subprocess.run([str(pip_path), 'install', '--upgrade', 'pip'], check=True)
         subprocess.run([str(pip_path), 'install', 
                        'django', 'djangorestframework', 
                        'django-cors-headers', 'python-decouple'], check=True)
         
         # Run migrations
-        print(f"{Colors.YELLOW}Setting up database...{Colors.NC}")
-        python_path = venv_path / "bin" / "python" if os.name != 'nt' else venv_path / "Scripts" / "python"
+        print("Setting up database...")
         subprocess.run([str(python_path), 'manage.py', 'makemigrations'], check=True)
         subprocess.run([str(python_path), 'manage.py', 'migrate'], check=True)
         
-        # Create admin user
-        print(f"{Colors.YELLOW}Creating admin user...{Colors.NC}")
-        subprocess.run([str(python_path), 'manage.py', 'shell', '-c', 
-                       "from django.contrib.auth.models import User; "
-                       "User.objects.create_superuser('admin', 'admin@example.com', 'admin123') "
-                       "if not User.objects.filter(username='admin').exists() else None"], 
-                      check=True)
-        
-        # Populate sample data
-        print(f"{Colors.YELLOW}Populating sample data...{Colors.NC}")
-        subprocess.run([str(python_path), 'manage.py', 'populate_sample_data'], check=True)
-        
-        print(f"{Colors.GREEN}✅ Backend setup complete{Colors.NC}")
+        print("Backend setup complete")
 
     def setup_frontend(self):
         """Setup React frontend"""
-        print(f"{Colors.BLUE}⚛️  Setting up React Frontend...{Colors.NC}")
+        print("Setting up React Frontend...")
         
         os.chdir(self.frontend_dir)
         
         # Install dependencies
-        print(f"{Colors.YELLOW}Installing Node.js dependencies...{Colors.NC}")
+        print("Installing Node.js dependencies...")
         subprocess.run(['npm', 'install'], check=True)
         
-        print(f"{Colors.GREEN}✅ Frontend setup complete{Colors.NC}")
+        print("Frontend setup complete")
 
     def start_backend(self):
         """Start Django backend server"""
-        print(f"{Colors.BLUE}🐍 Starting Django Backend Server...{Colors.NC}")
+        print("Starting Django Backend Server...")
         
         os.chdir(self.backend_dir)
         venv_path = self.backend_dir / "venv"
@@ -183,11 +140,11 @@ class UniPlannerRunner:
             bufsize=1
         )
         
-        print(f"{Colors.GREEN}✅ Django server starting on http://127.0.0.1:8000{Colors.NC}")
+        print("Django server starting on http://127.0.0.1:8000")
 
     def start_frontend(self):
         """Start React frontend server"""
-        print(f"{Colors.BLUE}⚛️  Starting React Frontend Server...{Colors.NC}")
+        print("Starting React Frontend Server...")
         
         os.chdir(self.frontend_dir)
         
@@ -199,7 +156,7 @@ class UniPlannerRunner:
             bufsize=1
         )
         
-        print(f"{Colors.GREEN}✅ React server starting on http://localhost:3000{Colors.NC}")
+        print("React server starting on http://localhost:3000")
 
     def monitor_processes(self):
         """Monitor running processes"""
@@ -207,7 +164,7 @@ class UniPlannerRunner:
             if self.backend_process:
                 for line in iter(self.backend_process.stdout.readline, ''):
                     if self.running:
-                        print(f"{Colors.PURPLE}[Backend] {line.strip()}{Colors.NC}")
+                        print(f"[Backend] {line.strip()}")
                     else:
                         break
         
@@ -215,7 +172,7 @@ class UniPlannerRunner:
             if self.frontend_process:
                 for line in iter(self.frontend_process.stdout.readline, ''):
                     if self.running:
-                        print(f"{Colors.CYAN}[Frontend] {line.strip()}{Colors.NC}")
+                        print(f"[Frontend] {line.strip()}")
                     else:
                         break
         
@@ -230,7 +187,7 @@ class UniPlannerRunner:
 
     def signal_handler(self, signum, frame):
         """Handle shutdown signals"""
-        print(f"\n{Colors.YELLOW}🛑 Shutting down servers...{Colors.NC}")
+        print("\nShutting down servers...")
         self.stop_servers()
         sys.exit(0)
 
@@ -240,11 +197,11 @@ class UniPlannerRunner:
         
         if self.backend_process:
             self.backend_process.terminate()
-            print(f"{Colors.GREEN}✅ Backend server stopped{Colors.NC}")
+            print("Backend server stopped")
         
         if self.frontend_process:
             self.frontend_process.terminate()
-            print(f"{Colors.GREEN}✅ Frontend server stopped{Colors.NC}")
+            print("Frontend server stopped")
 
     def run(self, setup=False):
         """Main run method"""
@@ -260,12 +217,12 @@ class UniPlannerRunner:
                 self.setup_backend()
                 self.setup_frontend()
             except subprocess.CalledProcessError as e:
-                print(f"{Colors.RED}❌ Setup failed: {e}{Colors.NC}")
+                print(f"Setup failed: {e}")
                 return False
         
         # Check ports
         if not self.check_ports():
-            print(f"{Colors.YELLOW}⚠️  Some ports are occupied. Continuing anyway...{Colors.NC}")
+            print("Some ports are occupied. Continuing anyway...")
         
         # Set up signal handlers
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -281,11 +238,11 @@ class UniPlannerRunner:
             # Monitor processes
             self.monitor_processes()
             
-            print(f"\n{Colors.GREEN}🎉 UniPlanner is now running!{Colors.NC}")
-            print(f"{Colors.BLUE}📱 Frontend: http://localhost:3000{Colors.NC}")
-            print(f"{Colors.BLUE}🔧 Backend API: http://127.0.0.1:8000{Colors.NC}")
-            print(f"{Colors.BLUE}👤 Admin Panel: http://127.0.0.1:8000/admin{Colors.NC}")
-            print(f"\n{Colors.YELLOW}Press Ctrl+C to stop all servers{Colors.NC}")
+            print("\nUniPlanner is now running!")
+            print("Frontend: http://localhost:3000")
+            print("Backend API: http://127.0.0.1:8000")
+            print("Admin Panel: http://127.0.0.1:8000/admin")
+            print("\nPress Ctrl+C to stop all servers")
             
             # Wait for processes
             if self.backend_process:
@@ -296,7 +253,7 @@ class UniPlannerRunner:
         except KeyboardInterrupt:
             self.signal_handler(signal.SIGINT, None)
         except Exception as e:
-            print(f"{Colors.RED}❌ Error: {e}{Colors.NC}")
+            print(f"Error: {e}")
             self.stop_servers()
             return False
         

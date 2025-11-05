@@ -108,11 +108,14 @@ class Prerequisite(models.Model):
 
 class DegreeProgram(models.Model):
     """Represents a degree program (e.g., Computer Science BS)"""
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, unique=True)
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='degree_programs')
     total_credits_required = models.PositiveIntegerField()
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['name']
     
     def __str__(self):
         return f"{self.name} ({self.department.code})"
@@ -225,9 +228,9 @@ class ProgramType(models.Model):
 
 class Program(models.Model):
     """Represents an academic program (e.g., Mathematics Major, Computer Science Minor)"""
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, unique=True)
     program_type = models.ForeignKey(ProgramType, on_delete=models.CASCADE, related_name='programs')
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='programs')
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='programs', null=True, blank=True)
     code = models.CharField(max_length=20, unique=True)
     description = models.TextField(blank=True)
     
